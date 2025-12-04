@@ -112,7 +112,7 @@ The PoC demonstrates the exact transformation and validation logic that would be
 Clean, versioned training datasets are written to a file-based store (ADLS), which is cost-efficient, scalable, and ideal for ML ingestion workflows.  
 A third layer, Snowflake, is used as the analytical and feature-style environment, enabling fast SQL-based exploration of annotation quality, disagreement trends, and label distributions without touching raw or training data.  
 
- This separation of concerns simplifies governance, supports reliable backfills, and enables multiple consumers (ML pipelines, analytics teams, monitoring dashboards) to operate independently without coupling.
+  This separation of concerns simplifies governance, supports reliable backfills, and enables multiple consumers (ML pipelines, analytics teams, monitoring dashboards) to operate independently without coupling.
 
 
 - **Batch-oriented processing vs. fully streaming**  
@@ -138,6 +138,7 @@ A third layer, Snowflake, is used as the analytical and feature-style environmen
 * Production implementation would run on Databricks Spark with dataset versioning, lineage, and orchestration through Azure Data Factory.
 
 ```
+
 
 
 
