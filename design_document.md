@@ -443,6 +443,33 @@ The PoC (`process_annotations.py`) implements the *core logic* of the Databricks
 * Version tags for training datasets
 
 ---
+## 10. Technology Justification
+
+- **Azure Data Factory (Ingestion & Orchestration)**  
+  Used for its native integration with ADLS, SQL, Databricks, and scheduling/monitoring capabilities. It simplifies wiring together ingestion, task generation, and the Databricks quality job with built-in retry and observability.
+
+- **Azure Data Lake Storage (Raw & Training Data)**  
+  Chosen as the primary data lake for raw text and versioned training datasets due to its low-cost, scalable object storage, native integration with Databricks and Purview, and support for partitioned Parquet/JSONL layouts.
+
+- **Azure Service Bus (Annotation Queue)**  
+  Selected as the message bus for annotation tasks as it provides durable messaging, dead-letter queues, retry support, and decoupling between task generation and annotation workers (human tools or LLM services).
+
+- **Azure SQL Database (Annotation Store)**  
+  Used as the annotation event store for its transactional guarantees, relational querying, indexing, and ease of managing historical annotation records with strong consistency.
+
+- **Azure Databricks (Quality Validator & Dataset Generator)**  
+  Chosen to run the quality-validation and dataset-building logic at scale. It provides a managed Spark environment, supports both batch and streaming, and integrates tightly with ADLS, ADF, and Purview.
+
+- **Snowflake (Analytical / Feature Store Layer)**  
+  Included to provide a cloud-agnostic analytical store for annotation metrics, label distributions, disagreement trends, and feature-like tables used by ML and analytics teams. It complements ADLS by enabling high-performance SQL analytics and BI integration.
+
+- **Microsoft Purview (Governance & Lineage)**  
+  Used to capture end-to-end lineage from ingestion through annotation, Databricks processing, and training dataset publication, as well as to manage data classifications and compliance.
+
+- **JSONL for Final Training Output**  
+  JSON Lines is chosen as the final dataset format because it is widely used in ML workflows, easily streamable, and simple to version and diff in ADLS. Each record is self-contained and directly consumable by tokenisation/training pipelines.
+  
+----
 
 ## 10. Conclusion
 
@@ -452,5 +479,3 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
-
----
