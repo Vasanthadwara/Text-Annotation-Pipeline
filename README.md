@@ -104,8 +104,18 @@ The PoC demonstrates the exact transformation and validation logic that would be
 - **Plain Python vs. PySpark for the PoC**  
   The core quality logic (confidence filtering + agreement checking) is implemented in plain Python for maximal portability and ease of execution by reviewers. In production, the same logic would run as a Databricks Spark job for scale-out processing.
 
-- **JSONL as the output format**  
-  JSON Lines was chosen because it is widely used in ML workflows, easy to stream, and straightforward to version in ADLS. Each line is an independent `{text, label}` record, which maps naturally to tokenisation and downstream training pipelines.
+- **JSONL vs. Parquet as the final dataset format**  
+  JSONL was used for the PoC because it is naturally compatible with NLP and LLM training pipelines, simple to diff/version, and easy to consume line-by-line.  
+  Parquet would offer better compression and schema evolution for large-scale datasets but is less convenient for tokenisation workflows.  
+  The trade-off is ML-centric usability (JSONL) vs. analytical efficiency (Parquet).
+
+- **Single-layer training zone vs. Medallion Architecture (Bronze/Silver/Gold)**  
+  For the PoC, the final cleaned dataset is written directly into a single “versioned training zone” in ADLS to keep the implementation simple and aligned with the assignment requirements.  
+  In a production system, a Medallion Architecture (Bronze → Silver → Gold) would provide clearer data contracts, stronger lineage, and better separation of concerns.  
+  - **Bronze**: raw text and raw annotation events  
+  - **Silver**: validated & standardized annotations after applying QC1 and QC2  
+  - **Gold**: certified training datasets ready for ML pipelines  
+  The trade-off is complexity vs. clarity: a single output layer is simpler for a PoC, while a medallion design scales better for real-world ML systems with continuous backfills, reprocessing, and multi-team consumption.
 
 - **Separation of annotation storage and training dataset**  
   Annotation events are stored in a relational store (Azure SQL) for transactional reliability and historical analysis.  
@@ -114,6 +124,16 @@ A third layer, Snowflake, is used as the analytical and feature-style environmen
 
   This separation of concerns simplifies governance, supports reliable backfills, and enables multiple consumers (ML pipelines, analytics teams, monitoring dashboards) to operate independently without coupling.
 
+- **Azure SQL vs. NoSQL (e.g., Cosmos DB) for annotation storage**  
+  Azure SQL was chosen for transactional integrity, strong consistency, and the ability to audit every annotation event.  
+  A NoSQL store would provide higher ingestion throughput and flexible schemas, which could help at very high annotation volumes.  
+  The trade-off is strict consistency (SQL) vs. horizontal scalability (NoSQL).  
+  SQL was selected because annotation events require precise auditability and reliable history tracking, which aligns with ML governance needs.
+
+- **Azure Service Bus vs. Event Hub/Kafka for annotation task distribution**  
+  The system uses Azure Service Bus because annotation tasks are small, discrete messages requiring at-least-once delivery, dead-letter queues, and checkpointing.  
+  Event Hub or Kafka would offer higher throughput for streaming applications but would add unnecessary operational overhead for a task-queue use case.  
+  Trade-off: rich messaging semantics (Service Bus) vs. high-throughput streaming (Event Hub/Kafka).
 
 - **Batch-oriented processing vs. fully streaming**  
   The design uses scheduled batch jobs (via ADF + Databricks) for quality validation and dataset generation. This keeps the system easier to reason about, easier to backfill, and aligns with most model training workflows, while still allowing future extension to streaming if stricter latency requirements emerge.
@@ -136,6 +156,7 @@ A third layer, Snowflake, is used as the analytical and feature-style environmen
 
 * The PoC focuses on clarity and correctness rather than scale.
 * Production implementation would run on Databricks Spark with dataset versioning, lineage, and orchestration through Azure Data Factory.
+
 
 
 
