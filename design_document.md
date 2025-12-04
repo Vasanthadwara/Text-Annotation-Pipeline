@@ -184,8 +184,36 @@ Used to:
 Snowflake complements ADLS by providing high-performance SQL analytics.
 
 ---
+### 4.8 ADLS – Versioned Training Zone
 
-### 4.8 Governance Layer – Microsoft Purview
+This ADLS area stores the final, clean training datasets produced by the Databricks quality-validation job.
+
+- Each run of the quality pipeline writes to a new, immutable **dataset version** path, for example:  
+  `/training_data/version=2025-12-05_1200/`
+- Data is stored in JSONL or Parquet format, partitioned by dataset_version and/or date, making it efficient for downstream ML workloads.
+- The versioned layout ensures:
+  - Reproducible model training.
+  - Easy rollback to previous datasets.
+  - Safe experimentation with new annotation guidelines or confidence thresholds.
+
+ML training pipelines, analytics jobs, and future feature-store exports all treat this zone as the **source of truth for curated labels**.
+
+---
+### 4.9 ML Training Pipelines
+
+ML training pipelines consume curated datasets from the ADLS Versioned Training Zone.
+
+- Use the latest or a pinned `dataset_version` as input.
+- Perform standard steps such as:
+  - Train/validation/test splits.
+  - Tokenisation or feature engineering.
+  - Model training and evaluation.
+- Can be implemented in Databricks, Azure ML, or other ML platforms, but all rely on the same versioned dataset contract from ADLS.
+
+By always reading from explicit dataset versions, these pipelines maintain **point-in-time correctness**, enable consistent experiment tracking, and avoid training/serving skew when new dataset versions are created.
+
+---
+### 4.10 Governance Layer – Microsoft Purview
 
 Purview captures:
 
@@ -489,6 +517,7 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
+
 
 
 
