@@ -108,7 +108,12 @@ The PoC demonstrates the exact transformation and validation logic that would be
   JSON Lines was chosen because it is widely used in ML workflows, easy to stream, and straightforward to version in ADLS. Each line is an independent `{text, label}` record, which maps naturally to tokenisation and downstream training pipelines.
 
 - **Separation of annotation storage and training dataset**  
-  Annotation events are stored in a relational store (Azure SQL) for transactional reliability and historical analysis. Clean training datasets are written to a file-based store (ADLS) for cheap, scalable storage and efficient consumption by ML jobs. This separation simplifies governance and backfills.
+  Annotation events are stored in a relational store (Azure SQL) for transactional reliability and historical analysis.  
+Clean, versioned training datasets are written to a file-based store (ADLS), which is cost-efficient, scalable, and ideal for ML ingestion workflows.  
+A third layer, Snowflake, is used as the analytical and feature-style environment, enabling fast SQL-based exploration of annotation quality, disagreement trends, and label distributions without touching raw or training data.  
+
+This separation of concerns simplifies governance, supports reliable backfills, and enables multiple consumers (ML pipelines, analytics teams, monitoring dashboards) to operate independently without coupling.
+
 
 - **Batch-oriented processing vs. fully streaming**  
   The design uses scheduled batch jobs (via ADF + Databricks) for quality validation and dataset generation. This keeps the system easier to reason about, easier to backfill, and aligns with most model training workflows, while still allowing future extension to streaming if stricter latency requirements emerge.
@@ -133,4 +138,5 @@ The PoC demonstrates the exact transformation and validation logic that would be
 * Production implementation would run on Databricks Spark with dataset versioning, lineage, and orchestration through Azure Data Factory.
 
 ```
+
 
