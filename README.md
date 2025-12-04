@@ -137,7 +137,5 @@ A third layer, Snowflake, is used as the analytical and feature-style environmen
 * The PoC focuses on clarity and correctness rather than scale.
 * Production implementation would run on Databricks Spark with dataset versioning, lineage, and orchestration through Azure Data Factory.
 
-```
-
 
 
