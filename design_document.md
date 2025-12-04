@@ -1,4 +1,4 @@
-# Annotation Quality Pipeline – System Design Document  
+# Text Annotation Pipeline – System Design Document  
 
 ---
 
@@ -479,3 +479,4 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
+
