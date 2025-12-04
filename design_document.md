@@ -50,7 +50,7 @@ flowchart TD
     C --> D[Azure Function<br/>Annotation Task Generator]
     D --> E[Azure Service Bus<br/>Annotation Queue]
 
-    E --> F[Human Annotation UI<br/>or Automated LLM Annotator]
+    E --> F[Annotation Worker Layer<br/>• Human Annotation Tool (Label Studio)<br/>• Azure OpenAI Auto-Labeler]
     F --> G[Azure SQL Database<br/>Annotation Store]
 
     G --> H[Databricks Spark Job<br/>Quality Validation]
@@ -112,14 +112,18 @@ Supports **both**:
 
 ### 4.4 Annotation Layer – Human & Automated Annotators
 
-Annotators produce:
+This layer consists of two types of annotation workers that consume tasks from Azure Service Bus:
 
-* label
-* annotator_id
-* confidence_score
-* timestamp
+1. Human Annotation Tool (e.g., Label Studio)
+A human-in-the-loop annotation platform that allows annotators to review text samples, assign labels, and record metadata such as annotator ID, timestamp, and confidence (if applicable).
+The tool integrates with Azure Service Bus for task intake and writes completed annotation records to Azure SQL Database via API or connector.
 
-Low-confidence LLM labels can be routed to humans for verification.
+2. Azure OpenAI Auto-Labeler
+An automated annotation service that uses Azure OpenAI models to generate initial labels for selected text samples.
+The service acts as a queue worker: it reads annotation tasks from Service Bus, applies the configured LLM labeling logic, and writes annotations with confidence scores into Azure SQL Database.
+Low-confidence predictions can be routed back for human verification, supporting an active-learning loop.
+
+Together, these workers form a hybrid annotation system that balances speed (LLMs) and accuracy (human annotators), improving throughput while maintaining high data quality.
 
 ---
 
@@ -202,12 +206,7 @@ Each text row becomes a structured annotation task → Service Bus.
 
 ### Step 3 – Annotation Execution
 
-Tasks consumed by:
-
-* Human annotators
-* Automated labeling services (LLMs)
-
-Results stored in Azure SQL.
+Tasks from Azure Service Bus are consumed by the Annotation Worker Layer, which includes both a Human Annotation Tool (Label Studio) and an Azure OpenAI Auto-Labeler. Each worker writes completed annotation events—label, annotator_id, confidence_score, and timestamp—into Azure SQL Database.
 
 ### Step 4 – Quality Validation (PoC Logic)
 
@@ -452,6 +451,12 @@ The PoC (`process_annotations.py`) implements the *core logic* of the Databricks
 - **Azure Data Lake Storage (Raw & Training Data)**  
   Chosen as the primary data lake for raw text and versioned training datasets due to its low-cost, scalable object storage, native integration with Databricks and Purview, and support for partitioned Parquet/JSONL layouts.
 
+- **Human Annotation Tool (Label Studio)**  
+  Chosen for its flexible UI, easy integration with Service Bus, support for custom labeling workflows, and ability to export structured annotation events. It provides high-quality human-labeled data needed for model evaluation and correction of low-confidence automated labels.
+
+- **Azure OpenAI Auto-Labeler**  
+  Selected as the automated labeling component due to its ability to quickly generate labels at scale, reduce human workload, and provide confidence scores used by the quality pipeline. Integrated as a queue worker, it supports hybrid pipelines and active-learning loops.
+
 - **Azure Service Bus (Annotation Queue)**  
   Selected as the message bus for annotation tasks as it provides durable messaging, dead-letter queues, retry support, and decoupling between task generation and annotation workers (human tools or LLM services).
 
@@ -480,6 +485,7 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
+
 
 
 
