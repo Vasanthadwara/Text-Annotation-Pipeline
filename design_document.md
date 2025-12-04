@@ -50,7 +50,7 @@ flowchart TD
     C --> D[Azure Function<br/>Annotation Task Generator]
     D --> E[Azure Service Bus<br/>Annotation Queue]
 
-    E --> F[Annotation Worker Layer<br/>• Human Annotation Tool (Label Studio)<br/>• Azure OpenAI Auto-Labeler]
+    E --> F[Annotation Worker Layer<br/>Human Annotation Tool (Label Studio)<br/>Azure OpenAI Auto-Labeler]
     F --> G[Azure SQL Database<br/>Annotation Store]
 
     G --> H[Databricks Spark Job<br/>Quality Validation]
@@ -63,6 +63,7 @@ flowchart TD
 
     I --> M[Purview Lineage & Governance]
     J --> M
+
 
 ```
 
@@ -485,6 +486,7 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
+
 
 
 
