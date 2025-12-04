@@ -47,7 +47,7 @@ flowchart TD
     A[Raw Text<br/>Support Chat, Email, Tickets] --> B[ADF Ingestion]
     B --> C[ADLS Raw Zone]
 
-    C --> D[Annotation Task Generator]
+    C --> D[Azure Function<br/>Annotation Task Generator]
     D --> E[Azure Service Bus<br/>Annotation Queue]
 
     E --> F[Human Annotation UI<br/>or Automated LLM Annotator]
@@ -63,6 +63,7 @@ flowchart TD
 
     I --> M[Purview Lineage & Governance]
     J --> M
+
 ```
 
 ---
@@ -479,4 +480,5 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
+
 
