@@ -97,11 +97,11 @@ Structure example:
 
 ---
 
-### 4.3 Annotation Task Generation
+### 4.3 Azure Function-Annotation Task Generation
 
-* Converts raw text into structured tasks.
-* Enforces metadata requirements (text_id, timestamp, task_type).
-* Publishes tasks to Azure Service Bus.
+* Implemented as a scheduled Azure Function that reads new raw text files from the ADLS Raw Zone.
+* Converts each record into a structured annotation task payload.
+* Publishes one message per text into Azure Service Bus (annotation queue) for human and/or LLM annotators to consume.
 
 Supports **both**:
 
@@ -480,5 +480,6 @@ The PoC script demonstrates the core validation logic that the Databricks Spark 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
 
 ```
+
 
 
