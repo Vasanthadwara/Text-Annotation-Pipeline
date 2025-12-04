@@ -20,8 +20,7 @@ DISAGREEMENTS_LOG_FILE = "disagreements.log"
 CONFIDENCE_THRESHOLD = 0.8
 
 """ Read all rows from raw_annotations.csv into a list of dicts  """
-def read_raw_annotations(input_path: str):
-   
+def read_raw_annotations(input_path: str):   
     annotations = []
     with open(input_path, mode="r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -31,10 +30,9 @@ def read_raw_annotations(input_path: str):
 
 
 """ Quality Check 1 (Confidence): Filter out any annotation with confidence_score < 0.8 """
-def filter_by_confidence(annotations, threshold: float):
-    
+def filter_by_confidence(annotations, threshold: float):    
     filtered = []
-
+   
     for row in annotations:
         try:
             confidence = float(row["confidence_score"])
@@ -131,3 +129,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
