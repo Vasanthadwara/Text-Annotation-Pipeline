@@ -561,16 +561,3 @@ This design provides a scalable, governed, and production-ready approach to buil
 The PoC script demonstrates the core validation logic that the Databricks Spark job would execute at enterprise scale.
 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
-
-```
-
-
-
-
-
-
-
-
-
-
-
