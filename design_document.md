@@ -1,0 +1,456 @@
+# Annotation Quality Pipeline – System Design Document  
+
+---
+
+## 1. Introduction
+
+This document presents the end-to-end architecture for a scalable annotation processing pipeline that generates clean, high-quality training datasets for machine learning. The system supports both human annotators and automated LLM-based annotators, integrates with enterprise governance controls, and enables reproducible dataset versioning.
+
+A lightweight Python script (`process_annotations.py`) is included as a Proof of Concept (PoC) that implements the core quality-validation logic. In production, this logic runs as a distributed Spark job in Azure Databricks.
+
+---
+
+## 2. Objectives & Functional Requirements
+
+### 2.1 Business Objectives
+- Produce consistent, reliable, model-ready training datasets.
+- Improve efficiency and quality of annotation workflows.
+- Ensure governance, reproducibility, and auditability.
+- Support hybrid annotation (human + automated/LLM).
+
+### 2.2 Functional Requirements
+- Ingest raw text from enterprise systems.
+- Generate annotation tasks.
+- Store annotation events and metadata.
+- Apply quality checks:
+  - **QC1:** Confidence threshold
+  - **QC2:** Annotator agreement
+- Log disagreements for review.
+- Produce versioned training datasets in JSONL format.
+- Provide lineage and governance visibility.
+
+### 2.3 Non-Functional Requirements
+- Scalability (millions of annotations).
+- Idempotent pipeline runs.
+- Secure service-to-service communication.
+- Observability and audit trail.
+- Cloud-native components.
+
+---
+
+## 3. High-Level System Architecture
+
+This architecture represents the complete path from ingestion to annotation, validation, dataset generation, and ML training.
+
+```mermaid
+flowchart TD
+    A[Raw Text<br/>Support Chat, Email, Tickets] --> B[ADF Ingestion]
+    B --> C[ADLS Raw Zone]
+
+    C --> D[Annotation Task Generator]
+    D --> E[Azure Service Bus<br/>Annotation Queue]
+
+    E --> F[Human Annotation UI<br/>or Automated LLM Annotator]
+    F --> G[Azure SQL Database<br/>Annotation Store]
+
+    G --> H[Databricks Spark Job<br/>Quality Validation]
+
+    H --> I[ADLS Versioned Training Zone]
+    H --> J[Snowflake Analytical Store]
+
+    I --> K[ML Training Pipelines]
+    J --> L[Annotation Analytics & Dashboards]
+
+    I --> M[Purview Lineage & Governance]
+    J --> M
+```
+
+---
+
+## 4. Detailed Component Architecture
+
+### 4.1 Ingestion Layer – Azure Data Factory (ADF)
+
+* Moves raw text into ADLS.
+* Triggers annotation task generation.
+* Orchestrates Databricks quality jobs.
+* Provides operational observability.
+
+---
+
+### 4.2 Storage Layer – Azure Data Lake Storage (ADLS)
+
+Stores:
+
+* Raw text (landing/bronze)
+* Annotation snapshots
+* Final versioned training datasets
+
+Structure example:
+
+```
+/raw/text/2025-12-03/
+/annotations/snapshots/2025-12-04/
+/training_data/version=2025-12-04_1200/
+```
+
+---
+
+### 4.3 Annotation Task Generation
+
+* Converts raw text into structured tasks.
+* Enforces metadata requirements (text_id, timestamp, task_type).
+* Publishes tasks to Azure Service Bus.
+
+Supports **both**:
+
+* Human annotation platforms
+* Automated LLM annotation services
+
+---
+
+### 4.4 Annotation Layer – Human & Automated Annotators
+
+Annotators produce:
+
+* label
+* annotator_id
+* confidence_score
+* timestamp
+
+Low-confidence LLM labels can be routed to humans for verification.
+
+---
+
+### 4.5 Annotation Store – Azure SQL Database
+
+Stores every annotation event:
+
+```
+text_id
+annotator_id
+label
+confidence_score
+annotation_timestamp
+```
+
+Benefits:
+
+* Full historical log
+* Drift analysis
+* Annotator performance metrics
+* Perfect match for PoC input schema
+
+---
+
+### 4.6 Processing Layer – Databricks Spark Quality Validation
+
+This is the **production equivalent** of the PoC.
+
+#### Processing Steps:
+
+1. Load annotation rows from Azure SQL.
+2. **QC1 – Confidence Filter:** remove annotations below threshold.
+3. **QC2 – Agreement Check:** detect conflicts among high-confidence annotators.
+4. Generate:
+
+   * Clean training dataset for ML (JSONL/Parquet)
+   * Disagreement dataset for human QA
+5. Write outputs to ADLS and Snowflake.
+6. Register lineage in Purview.
+
+The PoC implements steps 2–4 locally using Python.
+
+---
+
+### 4.7 Analytics Layer – Snowflake
+
+Used to:
+
+* Explore annotation quality
+* Track disagreement trends
+* Monitor annotator performance
+* Build annotation dashboards for product teams
+
+Snowflake complements ADLS by providing high-performance SQL analytics.
+
+---
+
+### 4.8 Governance Layer – Microsoft Purview
+
+Purview captures:
+
+* Lineage from ingestion → annotation → Databricks → ADLS/Snowflake
+* Schema evolution tracking
+* Data classifications (PII)
+* Dataset version certification
+
+This ensures auditability and compliance.
+
+---
+
+## 5. End-to-End Data Flow
+
+### Step 1 – Text Ingestion
+
+Enterprise systems send text → ADF → ADLS (raw).
+
+### Step 2 – Annotation Task Generation
+
+Each text row becomes a structured annotation task → Service Bus.
+
+### Step 3 – Annotation Execution
+
+Tasks consumed by:
+
+* Human annotators
+* Automated labeling services (LLMs)
+
+Results stored in Azure SQL.
+
+### Step 4 – Quality Validation (PoC Logic)
+
+Databricks Spark (or PoC script) performs:
+
+#### QC1: Confidence Filtering
+
+Confidence below 0.8 → drop.
+
+#### QC2: Agreement Check
+
+* If all annotators agree → keep
+* If disagreement → log for review
+
+The PoC implements this logic precisely.
+
+### Step 5 – Dataset Publishing
+
+Databricks writes:
+
+* Versioned clean dataset → ADLS
+* Annotation metrics → Snowflake
+
+### Step 6 – Consumption
+
+ML pipelines and dashboards pull from ADLS & Snowflake.
+
+---
+
+## 6. Versioning Strategy
+
+Versioning is critical for ML systems. This pipeline applies **three types of versioning**:
+
+---
+
+### 6.1 **Dataset Versioning**
+
+Each Databricks quality-validation run produces a **new immutable version** of the training dataset.
+
+Example folder structure:
+
+```
+/training_data/version=2025-12-04_1200/
+/training_data/version=2025-12-05_0900/
+```
+
+### Why this matters:
+
+* Reproducible model training
+* Ability to roll back to prior datasets
+* Safe experimentation
+* Multi-team ML collaboration
+
+### How versions are created:
+
+* Timestamp-based or run_id-based folders
+* No overwriting of previous versions
+* Each version tied to:
+
+  * Code commit
+  * Annotation snapshot ID
+  * Confidence threshold used
+  * Agreement logic version
+
+This makes training datasets **fully traceable**.
+
+---
+
+### 6.2 Annotation Versioning
+
+Azure SQL retains the **full history** of annotation events:
+
+* Original labels
+* Human corrections
+* LLM-provided suggestions
+* Timestamped confidence updates
+
+This enables:
+
+* Drift detection
+* Annotator reliability scoring
+* Reprocessing historical annotations for new models
+
+---
+
+### 6.3 Pipeline Versioning
+
+Databricks notebooks and Python scripts are source-controlled in Git.
+Each dataset version can be traced back to:
+
+* Code version
+* Config version
+* Annotation batch version
+
+This closes the loop for ML reproducibility.
+
+---
+## 7. Feature Store Design, Point-in-Time Correctness & Backfill Strategy
+
+Although the PoC focuses on annotation quality logic, the production design also supports feature engineering and feature-store-style usage for ML models.
+
+### 7.1 Feature Store Design (Offline / Analytical)
+
+In this architecture, the primary “feature store” for offline workflows is implemented using:
+
+- **ADLS** – as the canonical store of versioned training datasets (JSONL/Parquet).
+- **Snowflake** – as an analytical store that exposes curated, feature-like tables for ML and analytics teams.
+
+Example Snowflake table:
+
+```text
+training_features_intent_classification
+(
+    entity_id           STRING,      -- e.g. customer_id or conversation_id
+    text_id             STRING,
+    event_time          TIMESTAMP,
+    label               STRING,
+    feature_version     STRING,
+    dataset_version     STRING,
+    ingestion_time      TIMESTAMP
+)
+```
+### 7.2 Point-in-Time Correctness
+
+To avoid label leakage and to ensure realistic model evaluation, the pipeline enforces point-in-time correctness:
+
+Each annotation event carries an annotation_timestamp (or source event_time).
+
+When constructing training datasets, features and labels are joined as of that timestamp, using only data with event_time <= annotation_timestamp.
+
+Late-arriving annotations or updates are handled by generating a new dataset_version rather than mutating existing versions.
+
+For Snowflake-based analytical views, windowed queries (e.g., QUALIFY ROW_NUMBER() OVER (PARTITION BY text_id ORDER BY event_time DESC) = 1) can be used to ensure that only the latest valid feature values as of the label time are included.
+
+This approach guarantees that:
+
+Training does not “peek into the future”.
+
+Re-training on historical data faithfully simulates production conditions.
+
+### 7.3 Online/Offline Consistency
+
+To minimise training/serving skew, the same transformation logic is reused across:
+
+Offline pipelines (Databricks jobs writing to ADLS + Snowflake), and
+
+Potential online pipelines (streaming or micro-batch jobs populating online stores).
+
+Key techniques:
+
+Shared code modules (e.g., Python/Scala libraries) for feature definitions, imported into Databricks jobs used for both offline batch and online updates.
+
+A single, centralised definition of label taxonomies and feature semantics (stored in configuration / metadata).
+
+Using Snowflake/ADLS as the source of truth for both experimentation and backfill of any online stores.
+
+Although the PoC is purely offline, the design ensures that the same business rules and quality checks apply consistently in both offline and future online serving contexts.
+
+### 7.4 Backfill Strategy
+
+The pipeline supports controlled backfills for scenarios such as:
+
+Introduction of new label taxonomies.
+
+Changes to confidence thresholds (e.g., from 0.8 to 0.85).
+
+Fixes to annotation guidelines or quality logic.
+
+Onboarding a new source system with historical text.
+
+Backfill is handled by:
+
+Parameterising the Databricks quality-validation job with a date range or watermark (e.g., start_date, end_date).
+
+Reading the relevant subset of annotation events from Azure SQL.
+
+Reapplying the latest QC logic (confidence + agreement).
+
+Writing outputs into new dataset_version folders in ADLS, without overwriting historical versions.
+
+Optionally re-populating Snowflake tables with consistent dataset_version tags.
+
+Because the pipeline is idempotent and versioned:
+
+Backfills do not corrupt existing datasets.
+
+Old models can continue to reference older versions.
+
+New models can safely adopt the newly backfilled versions.
+
+## 8. PoC Alignment to Production System
+
+The PoC (`process_annotations.py`) implements the *core logic* of the Databricks job:
+
+| PoC Python Script           | Databricks Production Job               |
+| --------------------------- | --------------------------------------- |
+| Reads `raw_annotations.csv` | Reads Azure SQL table                   |
+| Filters low-confidence rows | Spark filter transformations            |
+| Groups by text              | Spark DataFrame groupBy                 |
+| Detects disagreements       | Distributed validation                  |
+| Writes JSONL                | Writes Parquet/JSONL to ADLS            |
+| Writes `disagreements.log`  | Writes review table + Snowflake metrics |
+
+### Purpose of PoC:
+
+* Provide a minimal, clear demonstration of quality logic
+* Validate the correctness of QC1 + QC2 rules
+* Enable easy local execution for evaluators
+* Show how the same logic scales to Spark
+
+---
+
+## 9. Security, Governance & Compliance
+
+### 9.1 Security
+
+* Azure AD authentication for all services
+* RBAC for ADF, Databricks, SQL, ADLS, Snowflake
+* Private endpoints for SQL + Databricks + ADLS
+* Managed Identities (no secrets in code)
+* Data encrypted at rest & in transit
+* PII redaction prior to annotation
+* Restricted access to annotator identity fields
+
+---
+
+### 9.2 Governance
+
+* Purview lineage shows the full data path
+* Classification of sensitive fields
+* Tracking schema evolution over annotation lifecycle
+* Dataset certification (gold/silver tiers)
+* Annotator activity audit logs
+* Version tags for training datasets
+
+---
+
+## 10. Conclusion
+
+This design provides a scalable, governed, and production-ready approach to building high-quality ML datasets from raw annotated text.
+The PoC script demonstrates the core validation logic that the Databricks Spark job would execute at enterprise scale.
+
+This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
+
+```
+
+---
