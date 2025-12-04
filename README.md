@@ -48,7 +48,7 @@ Removes any annotation where `confidence_score < 0.8`.
 
 For each text:
 
-* If all high-confidence annotators agree → include the sample
+* If all high-confidence annotators agree → include the sample and Write agreed samples to clean_training_dataset.jsonl in JSONL format
 * If labels conflict → log the text to `disagreements.log`
 
 ### **(d) Output Generation (JSONL)**
@@ -133,3 +133,4 @@ The PoC demonstrates the exact transformation and validation logic that would be
 * Production implementation would run on Databricks Spark with dataset versioning, lineage, and orchestration through Azure Data Factory.
 
 ```
+
