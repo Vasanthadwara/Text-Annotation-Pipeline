@@ -136,7 +136,7 @@ Together, these workers form a hybrid annotation system that balances speed (LLM
 Stores every annotation event:
 
 ```
-text_id
+text
 annotator_id
 label
 confidence_score
@@ -409,6 +409,8 @@ training_features_intent_classification
 ```
 ### 7.2 Point-in-Time Correctness
 
+Point-in-time correctness means the data you use for processing, analytics, or model training reflects the exact state of the world at a specific moment in time - no future data, no late-arriving data, no leakage.
+
 To avoid label leakage and to ensure realistic model evaluation, the pipeline enforces point-in-time correctness:
 
 - Each annotation event carries an annotation_timestamp (or source event_time).
@@ -561,3 +563,4 @@ This design provides a scalable, governed, and production-ready approach to buil
 The PoC script demonstrates the core validation logic that the Databricks Spark job would execute at enterprise scale.
 
 This architecture aligns fully with modern ML data engineering practices and the expectations outlined in the Senior Data Engineer assessment.
+
